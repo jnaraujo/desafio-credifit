@@ -1,0 +1,594 @@
+openapi: 3.0.3
+info:
+  title: API Crédito do Trabalhador - Credifit
+  description: |
+    Contrato da API para o desafio técnico Credifit.
+    Todos os endpoints devem seguir exatamente este contrato.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000
+    description: Servidor local
+
+paths:
+  /empresas:
+    post:
+      summary: Cadastrar empresa conveniada
+      description: |
+        Cadastra uma empresa conveniada no sistema.
+        Não permite CNPJ, CPF ou e-mail duplicados.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CriarEmpresaRequest'
+      responses:
+        '201':
+          description: Empresa criada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Empresa'
+        '400':
+          description: Dados inválidos (CNPJ/CPF malformado, campos obrigatórios ausentes)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '409':
+          description: CNPJ, CPF ou e-mail já cadastrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+
+  /funcionarios:
+    post:
+      summary: Cadastrar funcionário
+      description: |
+        Cadastra um funcionário vinculado a uma empresa conveniada.
+        Não permite CPF ou e-mail duplicados.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CriarFuncionarioRequest'
+      responses:
+        '201':
+          description: Funcionário criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Funcionario'
+        '400':
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Empresa não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '409':
+          description: CPF ou e-mail já cadastrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+
+  /funcionarios/{funcionarioId}/autorizacao-consulta:
+    post:
+      summary: Autorizar consulta ao Dataprev
+      description: |
+        O funcionário autoriza a consulta de seus dados no Dataprev (e-Consignado).
+        A autorização tem validade de 24 horas.
+      parameters:
+        - name: funcionarioId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Autorização concedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Autorizacao'
+        '404':
+          description: Funcionário não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+
+  /funcionarios/{funcionarioId}/margem:
+    get:
+      summary: Consultar margem consignável
+      description: |
+        Consulta a margem consignável do funcionário.
+        Requer autorização de consulta ativa (não expirada).
+        Verifica se a empresa está habilitada no e-Consignado via Dataprev.
+        A margem disponível é: (35% do salário) - soma das parcelas mensais de empréstimos ativos.
+      parameters:
+        - name: funcionarioId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Margem calculada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Margem'
+        '403':
+          description: Autorização de consulta ausente ou expirada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Funcionário não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '422':
+          description: Empresa não habilitada no e-Consignado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '502':
+          description: Dataprev indisponível
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+
+  /emprestimos/simular:
+    post:
+      summary: Simular empréstimo
+      description: |
+        Retorna as opções de parcelamento (1 a 4 parcelas) para o valor solicitado.
+        Valida se o valor cabe na margem disponível.
+        Cada parcela = valor solicitado / número de parcelas.
+        Não consulta o Dataprev — a margem é calculada localmente
+        (35% do salário menos as parcelas de empréstimos ativos).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimularEmprestimoRequest'
+      responses:
+        '200':
+          description: Simulação realizada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulacaoEmprestimo'
+        '400':
+          description: Dados inválidos (valor <= 0, valor acima da margem)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '403':
+          description: Autorização de consulta ausente ou expirada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Funcionário não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+
+  /emprestimos:
+    post:
+      summary: Solicitar empréstimo
+      description: |
+        Solicita um empréstimo consignado.
+        Executa todas as validações:
+        1. Funcionário existe e pertence a empresa conveniada
+        2. Autorização de consulta ativa
+        3. Empresa habilitada no e-Consignado (Dataprev)
+        4. Score de crédito suficiente para a faixa salarial (Dataprev)
+        5. Margem disponível suficiente
+        6. Máximo de 3 empréstimos ativos simultâneos
+        7. Processamento do pagamento via gateway
+
+        Resultado da chamada ao gateway (em todos os casos a resposta é 201):
+        - status "aprovado" -> empréstimo salvo como "aprovado"
+        - status "recusado" -> empréstimo salvo como "rejeitado" (motivoRejeicao preenchido)
+        - HTTP 503 ou timeout -> empréstimo salvo como "erro_processamento"
+
+        O status HTTP 502 é usado apenas quando o Dataprev está indisponível
+        (HTTP 503 ou timeout) — nesse caso nenhum empréstimo é salvo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SolicitarEmprestimoRequest'
+      responses:
+        '201':
+          description: Empréstimo solicitado (aprovado, rejeitado ou erro_processamento, conforme regras)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Emprestimo'
+        '400':
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '403':
+          description: Autorização de consulta ausente ou expirada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Funcionário não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '422':
+          description: Empresa não habilitada no e-Consignado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '502':
+          description: Dataprev indisponível (HTTP 503 ou timeout) — falha do gateway NÃO retorna 502 (gera empréstimo com status erro_processamento e resposta 201)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+    get:
+      summary: Listar empréstimos
+      description: Lista empréstimos com filtros opcionais.
+      parameters:
+        - name: funcionarioId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [aprovado, rejeitado, erro_processamento]
+      responses:
+        '200':
+          description: Lista de empréstimos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListaEmprestimos'
+
+  /emprestimos/{emprestimoId}:
+    get:
+      summary: Detalhar empréstimo
+      description: Retorna os detalhes de um empréstimo específico, incluindo parcelas.
+      parameters:
+        - name: emprestimoId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes do empréstimo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Emprestimo'
+        '404':
+          description: Empréstimo não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+
+components:
+  schemas:
+    CriarEmpresaRequest:
+      type: object
+      required:
+        - cnpj
+        - razaoSocial
+        - nomeRepresentante
+        - cpfRepresentante
+        - email
+        - senha
+      properties:
+        cnpj:
+          type: string
+          example: "12345678000100"
+          description: CNPJ sem formatação (14 dígitos)
+        razaoSocial:
+          type: string
+          example: "Tech Solutions Ltda"
+        nomeRepresentante:
+          type: string
+          example: "João da Silva"
+        cpfRepresentante:
+          type: string
+          example: "12345678900"
+          description: CPF sem formatação (11 dígitos)
+        email:
+          type: string
+          format: email
+          example: "joao@techsolutions.com"
+        senha:
+          type: string
+          minLength: 8
+          example: "senhaSegura123"
+
+    Empresa:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        cnpj:
+          type: string
+        razaoSocial:
+          type: string
+        nomeRepresentante:
+          type: string
+        cpfRepresentante:
+          type: string
+        email:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    CriarFuncionarioRequest:
+      type: object
+      required:
+        - nomeCompleto
+        - cpf
+        - email
+        - senha
+        - salario
+        - empresaId
+      properties:
+        nomeCompleto:
+          type: string
+          example: "Maria Oliveira"
+        cpf:
+          type: string
+          example: "98765432100"
+          description: CPF sem formatação (11 dígitos)
+        email:
+          type: string
+          format: email
+          example: "maria@email.com"
+        senha:
+          type: string
+          minLength: 8
+          example: "senhaSegura123"
+        salario:
+          type: number
+          format: double
+          minimum: 0.01
+          example: 5000.00
+        empresaId:
+          type: string
+          format: uuid
+
+    Funcionario:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        nomeCompleto:
+          type: string
+        cpf:
+          type: string
+        email:
+          type: string
+        salario:
+          type: number
+          format: double
+        empresaId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+
+    Autorizacao:
+      type: object
+      properties:
+        funcionarioId:
+          type: string
+          format: uuid
+        autorizado:
+          type: boolean
+          example: true
+        expiraEm:
+          type: string
+          format: date-time
+          description: Data/hora de expiração (24h após concessão)
+
+    Margem:
+      type: object
+      properties:
+        funcionarioId:
+          type: string
+          format: uuid
+        salario:
+          type: number
+          format: double
+          example: 5000.00
+        margemTotal:
+          type: number
+          format: double
+          example: 1750.00
+          description: "35% do salário"
+        margemUtilizada:
+          type: number
+          format: double
+          example: 250.00
+          description: Soma das parcelas mensais de empréstimos ativos
+        margemDisponivel:
+          type: number
+          format: double
+          example: 1500.00
+          description: margemTotal - margemUtilizada
+
+    SimularEmprestimoRequest:
+      type: object
+      required:
+        - funcionarioId
+        - valorSolicitado
+      properties:
+        funcionarioId:
+          type: string
+          format: uuid
+        valorSolicitado:
+          type: number
+          format: double
+          minimum: 0.01
+          example: 1000.00
+
+    SimulacaoEmprestimo:
+      type: object
+      properties:
+        funcionarioId:
+          type: string
+          format: uuid
+        valorSolicitado:
+          type: number
+          format: double
+        margemDisponivel:
+          type: number
+          format: double
+        parcelas:
+          type: array
+          items:
+            type: object
+            properties:
+              numeroParcelas:
+                type: integer
+                minimum: 1
+                maximum: 4
+              valorParcela:
+                type: number
+                format: double
+                description: "valorSolicitado / numeroParcelas (arredondado para 2 casas)"
+
+    SolicitarEmprestimoRequest:
+      type: object
+      required:
+        - funcionarioId
+        - valorSolicitado
+        - numeroParcelas
+      properties:
+        funcionarioId:
+          type: string
+          format: uuid
+        valorSolicitado:
+          type: number
+          format: double
+          minimum: 0.01
+        numeroParcelas:
+          type: integer
+          minimum: 1
+          maximum: 4
+
+    Emprestimo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        funcionarioId:
+          type: string
+          format: uuid
+        valorSolicitado:
+          type: number
+          format: double
+        numeroParcelas:
+          type: integer
+        valorParcela:
+          type: number
+          format: double
+        status:
+          type: string
+          enum: [aprovado, rejeitado, erro_processamento]
+          description: |
+            - aprovado: todas as validações passaram e pagamento processado
+            - rejeitado: alguma regra de negócio não atendida (score, margem, limite) ou pagamento recusado pelo gateway
+            - erro_processamento: regras OK mas gateway falhou (HTTP 503 ou timeout)
+        motivoRejeicao:
+          type: string
+          nullable: true
+          description: Preenchido quando status é 'rejeitado'
+          example: "Score insuficiente para a faixa salarial"
+        parcelas:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParcelaEmprestimo'
+        createdAt:
+          type: string
+          format: date-time
+
+    ParcelaEmprestimo:
+      type: object
+      properties:
+        numero:
+          type: integer
+          minimum: 1
+        valor:
+          type: number
+          format: double
+        dataVencimento:
+          type: string
+          format: date
+          description: |
+            A parcela N vence N meses após a data de solicitação.
+            Se o mês de vencimento não tiver o dia correspondente,
+            usa o último dia do mês (semântica do addMonths).
+
+    ListaEmprestimos:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Emprestimo'
+
+    Erro:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          example: "CNPJ já cadastrado"
+        details:
+          type: object
+          nullable: true
+          description: Detalhes adicionais do erro (opcional)

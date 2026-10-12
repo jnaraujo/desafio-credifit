@@ -1,0 +1,47 @@
+{
+  "name": "desafio-credifit",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=.env src/http/server.ts",
+    "start": "tsx src/http/server.ts",
+    "migrate": "drizzle-kit migrate",
+    "generate": "drizzle-kit generate",
+    "studio": "drizzle-kit studio",
+    "typecheck": "tsc --noEmit",
+    "db:test:setup": "tsx src/test/init-db.ts",
+    "pretest": "pnpm db:test:setup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.1.1",
+    "@types/node": "20.19.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "dotenv": "16.5.0",
+    "husky": "9.1.7",
+    "lint-staged": "15.5.1",
+    "tsc-alias": "1.8.8",
+    "tsup": "8.5.0",
+    "tsx": "4.20.3",
+    "turbo": "2.4.0",
+    "typescript": "7.0.2",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "@fastify/swagger": "9.8.1",
+    "@fastify/swagger-ui": "6.1.1",
+    "axios": "1.19.0",
+    "drizzle-kit": "0.31.10",
+    "drizzle-orm": "0.45.2",
+    "fastify": "5.11.2",
+    "fastify-type-provider-zod": "4.0.2",
+    "pg": "8.11.3",
+    "postgres": "3.4.3",
+    "zod": "3.25.76"
+  },
+  "license": "ISC",
+  "packageManager": "pnpm@9.15.3+sha512.1f79bc245a66eb0b07c5d4d83131240774642caaa86ef7d0434ab47c0d16f66b04e21e0c086eb61e62c77efc4d7f7ec071afad3796af64892fae66509173893a"
+}

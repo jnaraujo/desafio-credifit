@@ -1,0 +1,55 @@
+services:
+  # ============================================================
+  # PostgreSQL — Banco de dados
+  # ============================================================
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: credifit
+      POSTGRES_PASSWORD: credifit123
+      POSTGRES_DB: credifit_credito
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U credifit -d credifit_credito"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ============================================================
+  # Mocks — Dataprev + Gateway de Pagamento
+  # ============================================================
+  mocks:
+    build: ./mocks
+    environment:
+      MOCK_PORT: 3001
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ============================================================
+  # API
+  # ============================================================
+  api:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://credifit:credifit123@db:5432/credifit_credito
+      DATAPREV_BASE_URL: http://mocks:3001/dataprev
+      GATEWAY_BASE_URL: http://mocks:3001/gateway
+      PORT: 3000
+    depends_on:
+      db:
+        condition: service_healthy
+      mocks:
+        condition: service_healthy
+
+volumes:
+  pgdata:

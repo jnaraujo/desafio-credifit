@@ -1,0 +1,1 @@
+export const NUMERO_MAXIMO_PARCELAS = 4;

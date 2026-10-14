@@ -16,6 +16,7 @@ import {
 	AutorizacaoConsultaRequiredError,
 	DataprevUnavailableError,
 	EmpresaNotEnabledError,
+	MargemInsuficienteError,
 } from "@/errors/margem-errors";
 import { registerRoutesV1 } from "@/http/routes/route";
 
@@ -78,6 +79,13 @@ export async function createApp() {
 
 		if (error instanceof DataprevUnavailableError) {
 			return reply.status(502).send({
+				message: error.message,
+				details: {},
+			});
+		}
+
+		if (error instanceof MargemInsuficienteError) {
+			return reply.status(400).send({
 				message: error.message,
 				details: {},
 			});

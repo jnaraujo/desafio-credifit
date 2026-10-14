@@ -12,6 +12,13 @@ export class EmpresaNotEnabledError extends Error {
 	}
 }
 
+export class MargemInsuficienteError extends Error {
+	constructor(options?: ErrorOptions) {
+		super("Nenhuma opção de parcelamento cabe na margem disponível", options);
+		this.name = "MargemInsuficienteError";
+	}
+}
+
 export class DataprevUnavailableError extends Error {
 	constructor(options?: ErrorOptions) {
 		super("Dataprev indisponível", options);

@@ -6,7 +6,12 @@ const database = postgres(getTestDatabaseUrl(), { max: 1 });
 
 beforeEach(async () => {
 	await database`
-		TRUNCATE TABLE "empresas", "funcionarios", "pessoas", "contas"
+		TRUNCATE TABLE
+			"autorizacoes_consulta",
+			"empresas",
+			"funcionarios",
+			"pessoas",
+			"contas"
 		RESTART IDENTITY CASCADE
 	`;
 });

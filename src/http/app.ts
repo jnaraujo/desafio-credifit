@@ -11,6 +11,7 @@ import {
 } from "fastify-type-provider-zod";
 import { CadastroDuplicadoError } from "@/errors/cadastro-duplicado-error";
 import { EmpresaNaoEncontradaError } from "@/errors/empresa-nao-encontrada-error";
+import { FuncionarioNotFound } from "@/errors/funcionario-not-found-error";
 import { registerRoutesV1 } from "@/http/routes/route";
 
 declare module "fastify" {
@@ -43,6 +44,13 @@ export async function createApp() {
 		}
 
 		if (error instanceof EmpresaNaoEncontradaError) {
+			return reply.status(404).send({
+				message: error.message,
+				details: {},
+			});
+		}
+
+		if (error instanceof FuncionarioNotFound) {
 			return reply.status(404).send({
 				message: error.message,
 				details: {},

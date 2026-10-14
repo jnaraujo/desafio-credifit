@@ -31,3 +31,17 @@ export const createFuncionario201ResponseSchema = z.object({
 		.uuid({ message: "ID da empresa precisa ser um UUID válido" }),
 	createdAt: z.string().datetime({ message: "Data de criação inválida" }),
 });
+
+export const createFuncionarioAutorizacaoConsultaParamsSchema = z.object({
+	funcionarioId: z
+		.string()
+		.uuid({ message: "ID do funcionário precisa ser um UUID válido" }),
+});
+
+export const createFuncionarioAutorizacaoConsulta200ResponseSchema = z.object({
+	funcionarioId: z
+		.string()
+		.uuid({ message: "ID do funcionário precisa ser um UUID válido" }),
+	autorizado: z.boolean(),
+	expiraEm: z.string().datetime({ message: "Data de expiração inválida" }),
+});

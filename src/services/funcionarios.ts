@@ -1,11 +1,18 @@
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/database/connection";
-import { contas, funcionarios, pessoas } from "@/database/schema";
+import {
+	autorizacoesConsulta,
+	contas,
+	funcionarios,
+	pessoas,
+} from "@/database/schema";
 import {
 	CadastroDuplicadoError,
 	getForeignKeyConstraintError,
 	getUniqueConstraintError,
 } from "@/errors/cadastro-duplicado-error";
 import { EmpresaNaoEncontradaError } from "@/errors/empresa-nao-encontrada-error";
+import { FuncionarioNotFound } from "@/errors/funcionario-not-found-error";
 import { CreateFuncionarioBody } from "@/schemas/funcionarios";
 import { hashPassword } from "@/utils/auth";
 
@@ -76,6 +83,42 @@ export async function createFuncionario(data: CreateFuncionarioBody) {
 				throw new CadastroDuplicadoError("Email já cadastrado", {
 					cause: error,
 				});
+		}
+
+		throw error;
+	}
+}
+
+export async function findFuncionarioById(funcionarioId: string) {
+	const [funcionario] = await db
+		.select()
+		.from(funcionarios)
+		.where(eq(funcionarios.id, funcionarioId));
+	return funcionario ?? null;
+}
+
+export async function authorizeDataprevConsultation(funcionarioId: string) {
+	try {
+		const [autorizacao] = await db
+			.insert(autorizacoesConsulta)
+			.values({
+				funcionarioId,
+				expiraEm: sql`NOW() + INTERVAL '24 hours'`,
+			})
+			.returning();
+
+		if (!autorizacao) {
+			throw new Error("Erro ao criar autorização de consulta.");
+		}
+
+		return autorizacao;
+	} catch (error: unknown) {
+		const foreignKeyConstraintError = getForeignKeyConstraintError(error);
+		if (
+			foreignKeyConstraintError?.constraint_name ===
+			"autorizacoes_consulta_funcionario_id_funcionarios_id_fk"
+		) {
+			throw new FuncionarioNotFound({ cause: error });
 		}
 
 		throw error;

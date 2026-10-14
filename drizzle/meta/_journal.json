@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791938753449,
+      "tag": "0000_nifty_venus",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791939610297,
+      "tag": "0001_funcionario-salario-decimal",
+      "breakpoints": true
+    }
+  ]
+}

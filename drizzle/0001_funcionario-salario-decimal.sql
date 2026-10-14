@@ -1,0 +1,1 @@
+ALTER TABLE "funcionarios" ALTER COLUMN "salario" SET DATA TYPE numeric;

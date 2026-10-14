@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "@/http/app";
 import {
+	createFuncionarioValido,
 	empresaIdInexistente,
 	empresaValida,
-	funcionarioValido,
 } from "../fixtures/cadastros";
 import {
 	createEmpresaForTest,
@@ -25,7 +25,7 @@ describe("POST /funcionarios", () => {
 
 	it("cadastra funcionário com salário decimal e não retorna a senha", async () => {
 		const empresaId = await createEmpresaForTest(app);
-		const payload = funcionarioValido(empresaId, { salario: 5000.25 });
+		const payload = createFuncionarioValido(empresaId, { salario: 5000.25 });
 		const response = await app.inject({
 			method: "POST",
 			url: "/funcionarios",
@@ -53,7 +53,7 @@ describe("POST /funcionarios", () => {
 		const response = await app.inject({
 			method: "POST",
 			url: "/funcionarios",
-			payload: funcionarioValido(empresaId, { cpf: "123" }),
+			payload: createFuncionarioValido(empresaId, { cpf: "123" }),
 		});
 
 		expect(response.statusCode).toBe(400);
@@ -67,7 +67,7 @@ describe("POST /funcionarios", () => {
 		const response = await app.inject({
 			method: "POST",
 			url: "/funcionarios",
-			payload: funcionarioValido(empresaId, { cpf: "ABCDEFGHIJK" }),
+			payload: createFuncionarioValido(empresaId, { cpf: "ABCDEFGHIJK" }),
 		});
 
 		expect(response.statusCode).toBe(400);
@@ -81,7 +81,7 @@ describe("POST /funcionarios", () => {
 		const response = await app.inject({
 			method: "POST",
 			url: "/funcionarios",
-			payload: funcionarioValido(empresaId, { email: "email-invalido" }),
+			payload: createFuncionarioValido(empresaId, { email: "email-invalido" }),
 		});
 
 		expect(response.statusCode).toBe(400);
@@ -95,7 +95,7 @@ describe("POST /funcionarios", () => {
 		const response = await app.inject({
 			method: "POST",
 			url: "/funcionarios",
-			payload: funcionarioValido(empresaId, { empresaId: "invalido" }),
+			payload: createFuncionarioValido(empresaId, { empresaId: "invalido" }),
 		});
 
 		expect(response.statusCode).toBe(400);
@@ -129,7 +129,7 @@ describe("POST /funcionarios", () => {
 		const response = await app.inject({
 			method: "POST",
 			url: "/funcionarios",
-			payload: funcionarioValido(empresaId, { senha: "1234567" }),
+			payload: createFuncionarioValido(empresaId, { senha: "1234567" }),
 		});
 
 		expect(response.statusCode).toBe(400);
@@ -143,7 +143,7 @@ describe("POST /funcionarios", () => {
 		const response = await app.inject({
 			method: "POST",
 			url: "/funcionarios",
-			payload: funcionarioValido(empresaId, { senha: "12345678" }),
+			payload: createFuncionarioValido(empresaId, { senha: "12345678" }),
 		});
 
 		expect(response.statusCode).toBe(201);
@@ -156,7 +156,7 @@ describe("POST /funcionarios", () => {
 			const response = await app.inject({
 				method: "POST",
 				url: "/funcionarios",
-				payload: funcionarioValido(empresaId, { salario }),
+				payload: createFuncionarioValido(empresaId, { salario }),
 			});
 
 			expect(response.statusCode).toBe(400);
@@ -171,7 +171,7 @@ describe("POST /funcionarios", () => {
 		const response = await app.inject({
 			method: "POST",
 			url: "/funcionarios",
-			payload: funcionarioValido(empresaId, { salario: 0.01 }),
+			payload: createFuncionarioValido(empresaId, { salario: 0.01 }),
 		});
 
 		expect(response.statusCode).toBe(201);
@@ -182,7 +182,7 @@ describe("POST /funcionarios", () => {
 		const response = await app.inject({
 			method: "POST",
 			url: "/funcionarios",
-			payload: funcionarioValido(empresaIdInexistente),
+			payload: createFuncionarioValido(empresaIdInexistente),
 		});
 
 		expect(response.statusCode).toBe(404);
@@ -194,13 +194,13 @@ describe("POST /funcionarios", () => {
 
 	it("retorna 409 quando o CPF já pertence a outro funcionário", async () => {
 		const empresaId = await createEmpresaForTest(app);
-		const primeiroFuncionario = funcionarioValido(empresaId);
+		const primeiroFuncionario = createFuncionarioValido(empresaId);
 		await createFuncionarioForTest(app, primeiroFuncionario);
 
 		const response = await app.inject({
 			method: "POST",
 			url: "/funcionarios",
-			payload: funcionarioValido(empresaId, {
+			payload: createFuncionarioValido(empresaId, {
 				cpf: primeiroFuncionario.cpf,
 				email: "outro-funcionario@techsolutions.com",
 			}),
@@ -215,13 +215,13 @@ describe("POST /funcionarios", () => {
 
 	it("retorna 409 quando o e-mail já pertence a outro funcionário", async () => {
 		const empresaId = await createEmpresaForTest(app);
-		const primeiroFuncionario = funcionarioValido(empresaId);
+		const primeiroFuncionario = createFuncionarioValido(empresaId);
 		await createFuncionarioForTest(app, primeiroFuncionario);
 
 		const response = await app.inject({
 			method: "POST",
 			url: "/funcionarios",
-			payload: funcionarioValido(empresaId, {
+			payload: createFuncionarioValido(empresaId, {
 				cpf: "98765432101",
 				email: primeiroFuncionario.email,
 			}),
@@ -239,7 +239,7 @@ describe("POST /funcionarios", () => {
 		const response = await app.inject({
 			method: "POST",
 			url: "/funcionarios",
-			payload: funcionarioValido(empresaId, {
+			payload: createFuncionarioValido(empresaId, {
 				cpf: empresaValida.cpfRepresentante,
 				email: "representante-como-funcionario@techsolutions.com",
 			}),
@@ -256,7 +256,7 @@ describe("POST /funcionarios", () => {
 		const response = await app.inject({
 			method: "POST",
 			url: "/funcionarios",
-			payload: funcionarioValido(empresaId, {
+			payload: createFuncionarioValido(empresaId, {
 				cpf: "98765432101",
 				email: empresaValida.email,
 			}),

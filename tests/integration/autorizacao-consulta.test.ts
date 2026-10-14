@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "@/http/app";
-import { funcionarioValido } from "../fixtures/cadastros";
+import { createFuncionarioValido } from "../fixtures/cadastros";
 import {
 	createEmpresaForTest,
 	createFuncionarioForTest,
@@ -49,7 +49,7 @@ describe("POST /funcionarios/:funcionarioId/autorizacao-consulta", () => {
 		const empresaId = await createEmpresaForTest(app);
 		const funcionarioId = await createFuncionarioForTest(
 			app,
-			funcionarioValido(empresaId),
+			createFuncionarioValido(empresaId),
 		);
 
 		const chamadaIniciadaEm = Date.now();
@@ -103,7 +103,7 @@ describe("POST /funcionarios/:funcionarioId/autorizacao-consulta", () => {
 		const empresaId = await createEmpresaForTest(app);
 		const funcionarioId = await createFuncionarioForTest(
 			app,
-			funcionarioValido(empresaId),
+			createFuncionarioValido(empresaId),
 		);
 		const url = `/funcionarios/${funcionarioId}/autorizacao-consulta`;
 

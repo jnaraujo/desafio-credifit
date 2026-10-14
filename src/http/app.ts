@@ -9,9 +9,9 @@ import {
 	serializerCompiler,
 	validatorCompiler,
 } from "fastify-type-provider-zod";
-import { CadastroDuplicadoError } from "@/errors/cadastro-duplicado-error";
-import { EmpresaNaoEncontradaError } from "@/errors/empresa-nao-encontrada-error";
-import { FuncionarioNotFound } from "@/errors/funcionario-not-found-error";
+import { CadastroDuplicateError } from "@/errors/cadastro-duplicate-error";
+import { EmpresaNotFoundError } from "@/errors/empresa-not-found-error";
+import { FuncionarioNotFoundError } from "@/errors/funcionario-not-found-error";
 import { registerRoutesV1 } from "@/http/routes/route";
 
 declare module "fastify" {
@@ -36,21 +36,21 @@ export async function createApp() {
 			});
 		}
 
-		if (error instanceof CadastroDuplicadoError) {
+		if (error instanceof CadastroDuplicateError) {
 			return reply.status(409).send({
 				message: error.message,
 				details: {},
 			});
 		}
 
-		if (error instanceof EmpresaNaoEncontradaError) {
+		if (error instanceof EmpresaNotFoundError) {
 			return reply.status(404).send({
 				message: error.message,
 				details: {},
 			});
 		}
 
-		if (error instanceof FuncionarioNotFound) {
+		if (error instanceof FuncionarioNotFoundError) {
 			return reply.status(404).send({
 				message: error.message,
 				details: {},

@@ -1,6 +1,6 @@
-export class FuncionarioNotFound extends Error {
+export class FuncionarioNotFoundError extends Error {
 	constructor(options?: ErrorOptions) {
 		super("Funcionário não encontrado", options);
-		this.name = "FuncionarioNotFound";
+		this.name = "FuncionarioNotFoundError";
 	}
 }

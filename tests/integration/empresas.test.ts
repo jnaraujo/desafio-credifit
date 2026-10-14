@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "@/http/app";
-import { empresaValida, funcionarioValido } from "../fixtures/cadastros";
+import { createFuncionarioValido, empresaValida } from "../fixtures/cadastros";
 import {
 	createEmpresaForTest,
 	createFuncionarioForTest,
@@ -171,7 +171,7 @@ describe("POST /empresas", () => {
 		expect(empresaResponse.statusCode).toBe(201);
 		const empresaId = empresaResponse.json().id as string;
 
-		const funcionario = funcionarioValido(empresaId);
+		const funcionario = createFuncionarioValido(empresaId);
 		await createFuncionarioForTest(app, funcionario);
 
 		const response = await app.inject({

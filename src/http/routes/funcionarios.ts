@@ -1,13 +1,13 @@
 import type { FastifyInstance } from "fastify";
 import { ZodTypeProvider } from "fastify-type-provider-zod";
 import {
+	authorizeConsultaDataprev200ResponseSchema,
+	authorizeConsultaDataprevParamsSchema,
 	createFuncionario201ResponseSchema,
-	createFuncionarioAutorizacaoConsulta200ResponseSchema,
-	createFuncionarioAutorizacaoConsultaParamsSchema,
 	createFuncionarioBodySchema,
 } from "@/schemas/funcionarios";
 import {
-	authorizeDataprevConsultation,
+	authorizeConsultaDataprev,
 	createFuncionario,
 } from "@/services/funcionarios";
 
@@ -41,14 +41,14 @@ export function funcionariosRoutes(app: FastifyInstance) {
 		"/:funcionarioId/autorizacao-consulta",
 		{
 			schema: {
-				params: createFuncionarioAutorizacaoConsultaParamsSchema,
+				params: authorizeConsultaDataprevParamsSchema,
 				response: {
-					200: createFuncionarioAutorizacaoConsulta200ResponseSchema,
+					200: authorizeConsultaDataprev200ResponseSchema,
 				},
 			},
 		},
 		async (req, reply) => {
-			const autorizacao = await authorizeDataprevConsultation(
+			const autorizacao = await authorizeConsultaDataprev(
 				req.params.funcionarioId,
 			);
 

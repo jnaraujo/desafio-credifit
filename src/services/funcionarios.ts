@@ -7,12 +7,12 @@ import {
 	pessoas,
 } from "@/database/schema";
 import {
-	CadastroDuplicadoError,
+	CadastroDuplicateError,
 	getForeignKeyConstraintError,
 	getUniqueConstraintError,
-} from "@/errors/cadastro-duplicado-error";
-import { EmpresaNaoEncontradaError } from "@/errors/empresa-nao-encontrada-error";
-import { FuncionarioNotFound } from "@/errors/funcionario-not-found-error";
+} from "@/errors/cadastro-duplicate-error";
+import { EmpresaNotFoundError } from "@/errors/empresa-not-found-error";
+import { FuncionarioNotFoundError } from "@/errors/funcionario-not-found-error";
 import { CreateFuncionarioBody } from "@/schemas/funcionarios";
 import { hashPassword } from "@/utils/auth";
 
@@ -70,17 +70,17 @@ export async function createFuncionario(data: CreateFuncionarioBody) {
 			foreignKeyConstraintError?.constraint_name ===
 			"funcionarios_empresa_id_empresas_id_fk"
 		) {
-			throw new EmpresaNaoEncontradaError({ cause: error });
+			throw new EmpresaNotFoundError({ cause: error });
 		}
 
 		const uniqueConstraintError = getUniqueConstraintError(error);
 		switch (uniqueConstraintError?.constraint_name) {
 			case "pessoas_cpf_unique":
-				throw new CadastroDuplicadoError("CPF já cadastrado", {
+				throw new CadastroDuplicateError("CPF já cadastrado", {
 					cause: error,
 				});
 			case "contas_email_unique":
-				throw new CadastroDuplicadoError("Email já cadastrado", {
+				throw new CadastroDuplicateError("Email já cadastrado", {
 					cause: error,
 				});
 		}
@@ -97,7 +97,7 @@ export async function findFuncionarioById(funcionarioId: string) {
 	return funcionario ?? null;
 }
 
-export async function authorizeDataprevConsultation(funcionarioId: string) {
+export async function authorizeConsultaDataprev(funcionarioId: string) {
 	try {
 		const [autorizacao] = await db
 			.insert(autorizacoesConsulta)
@@ -118,7 +118,7 @@ export async function authorizeDataprevConsultation(funcionarioId: string) {
 			foreignKeyConstraintError?.constraint_name ===
 			"autorizacoes_consulta_funcionario_id_funcionarios_id_fk"
 		) {
-			throw new FuncionarioNotFound({ cause: error });
+			throw new FuncionarioNotFoundError({ cause: error });
 		}
 
 		throw error;

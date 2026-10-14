@@ -12,7 +12,7 @@ export const empresaValida: CreateEmpresaBody = {
 
 export const empresaIdInexistente = "00000000-0000-4000-8000-000000000001";
 
-export function funcionarioValido(
+export function createFuncionarioValido(
 	empresaId: string,
 	overrides: Partial<CreateFuncionarioBody> = {},
 ): CreateFuncionarioBody {

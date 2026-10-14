@@ -1,10 +1,10 @@
 import { DrizzleQueryError } from "drizzle-orm/errors";
 import postgres from "postgres";
 
-export class CadastroDuplicadoError extends Error {
+export class CadastroDuplicateError extends Error {
 	constructor(message: string, options?: ErrorOptions) {
 		super(message, options);
-		this.name = "CadastroDuplicadoError";
+		this.name = "CadastroDuplicateError";
 	}
 }
 

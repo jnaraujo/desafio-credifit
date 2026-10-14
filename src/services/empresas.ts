@@ -1,9 +1,9 @@
 import { db } from "@/database/connection";
 import { contas, empresas, pessoas } from "@/database/schema";
 import {
-	CadastroDuplicadoError,
+	CadastroDuplicateError,
 	getUniqueConstraintError,
-} from "@/errors/cadastro-duplicado-error";
+} from "@/errors/cadastro-duplicate-error";
 import type { CreateEmpresaBody } from "@/schemas/empresas";
 import { hashPassword } from "@/utils/auth";
 
@@ -61,15 +61,15 @@ export async function createEmpresa(data: CreateEmpresaBody) {
 
 		switch (uniqueConstraintError?.constraint_name) {
 			case "empresas_cnpj_unique":
-				throw new CadastroDuplicadoError("CNPJ já cadastrado", {
+				throw new CadastroDuplicateError("CNPJ já cadastrado", {
 					cause: error,
 				});
 			case "pessoas_cpf_unique":
-				throw new CadastroDuplicadoError("CPF já cadastrado", {
+				throw new CadastroDuplicateError("CPF já cadastrado", {
 					cause: error,
 				});
 			case "contas_email_unique":
-				throw new CadastroDuplicadoError("E-mail já cadastrado", {
+				throw new CadastroDuplicateError("E-mail já cadastrado", {
 					cause: error,
 				});
 		}

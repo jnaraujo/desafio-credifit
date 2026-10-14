@@ -32,13 +32,13 @@ export const createFuncionario201ResponseSchema = z.object({
 	createdAt: z.string().datetime({ message: "Data de criação inválida" }),
 });
 
-export const createFuncionarioAutorizacaoConsultaParamsSchema = z.object({
+export const authorizeConsultaDataprevParamsSchema = z.object({
 	funcionarioId: z
 		.string()
 		.uuid({ message: "ID do funcionário precisa ser um UUID válido" }),
 });
 
-export const createFuncionarioAutorizacaoConsulta200ResponseSchema = z.object({
+export const authorizeConsultaDataprev200ResponseSchema = z.object({
 	funcionarioId: z
 		.string()
 		.uuid({ message: "ID do funcionário precisa ser um UUID válido" }),

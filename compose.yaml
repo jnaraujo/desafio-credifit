@@ -19,6 +19,26 @@ services:
       retries: 10
 
   # ============================================================
+  # PostgreSQL — Banco isolado para testes (dados efêmeros)
+  # ============================================================
+  db-test:
+    image: postgres:16-alpine
+    profiles: ["test"]
+    environment:
+      POSTGRES_USER: credifit_test
+      POSTGRES_PASSWORD: credifit_test
+      POSTGRES_DB: credifit_credito_test
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U credifit_test -d credifit_credito_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+
+  # ============================================================
   # Mocks — Dataprev + Gateway de Pagamento
   # ============================================================
   mocks:

@@ -2,8 +2,14 @@ import { z } from "zod";
 
 const envSchema = z.object({
 	DATABASE_URL: z.string().url(),
-	DATAPREV_BASE_URL: z.string().url(),
-	GATEWAY_BASE_URL: z.string().url(),
+	DATAPREV_BASE_URL: z
+		.string()
+		.url()
+		.transform((url) => url.replace(/\/+$/, "")),
+	GATEWAY_BASE_URL: z
+		.string()
+		.url()
+		.transform((url) => url.replace(/\/+$/, "")),
 
 	DB_MAX_CONNECTIONS: z.coerce.number().min(1).max(100).default(10),
 

@@ -1,10 +1,15 @@
-import { eq, sql } from "drizzle-orm";
+import Decimal from "decimal.js";
+import { and, eq, gt, sql } from "drizzle-orm";
+import { checkEmpresaHabilitada } from "@/clients/dataprev";
 import { db } from "@/database/connection";
 import {
 	autorizacoesConsulta,
 	contas,
+	empresas,
+	emprestimos,
 	funcionarios,
 	pessoas,
+	type StatusEmprestimo,
 } from "@/database/schema";
 import {
 	CadastroDuplicateError,
@@ -13,8 +18,13 @@ import {
 } from "@/errors/cadastro-duplicate-error";
 import { EmpresaNotFoundError } from "@/errors/empresa-not-found-error";
 import { FuncionarioNotFoundError } from "@/errors/funcionario-not-found-error";
+import {
+	AutorizacaoConsultaRequiredError,
+	EmpresaNotEnabledError,
+} from "@/errors/margem-errors";
 import { CreateFuncionarioBody } from "@/schemas/funcionarios";
 import { hashPassword } from "@/utils/auth";
+import { calculateMargem } from "@/utils/margem";
 
 export async function createFuncionario(data: CreateFuncionarioBody) {
 	try {
@@ -49,7 +59,7 @@ export async function createFuncionario(data: CreateFuncionarioBody) {
 					pessoaId: novaPessoa.id,
 					empresaId: data.empresaId,
 					contaId: novaConta.id,
-					salario: data.salario,
+					salario: new Decimal(data.salario).toString(),
 				})
 				.returning();
 
@@ -91,10 +101,23 @@ export async function createFuncionario(data: CreateFuncionarioBody) {
 
 export async function findFuncionarioById(funcionarioId: string) {
 	const [funcionario] = await db
-		.select()
+		.select({
+			id: funcionarios.id,
+			salario: funcionarios.salario,
+			cnpj: empresas.cnpj,
+			nome: pessoas.nomeCompleto,
+			cpf: pessoas.cpf,
+		})
 		.from(funcionarios)
+		.innerJoin(empresas, eq(funcionarios.empresaId, empresas.id))
+		.innerJoin(pessoas, eq(funcionarios.pessoaId, pessoas.id))
 		.where(eq(funcionarios.id, funcionarioId));
-	return funcionario ?? null;
+
+	if (!funcionario) {
+		throw new FuncionarioNotFoundError();
+	}
+
+	return funcionario;
 }
 
 export async function authorizeConsultaDataprev(funcionarioId: string) {
@@ -123,4 +146,70 @@ export async function authorizeConsultaDataprev(funcionarioId: string) {
 
 		throw error;
 	}
+}
+
+export async function findAutorizacaoAtivaByFuncionarioId(
+	funcionarioId: string,
+) {
+	const [autorizacaoAtiva] = await db
+		.select()
+		.from(autorizacoesConsulta)
+		.where(
+			and(
+				eq(autorizacoesConsulta.funcionarioId, funcionarioId),
+				gt(autorizacoesConsulta.expiraEm, sql`NOW()`),
+			),
+		)
+		.limit(1);
+
+	return autorizacaoAtiva ?? null;
+}
+
+export async function findEmprestimosByFuncionarioId(
+	funcionarioId: string,
+	status?: StatusEmprestimo,
+) {
+	const emprestimosDoFuncionario = await db
+		.select()
+		.from(emprestimos)
+		.where(
+			and(
+				eq(emprestimos.funcionarioId, funcionarioId),
+				status ? eq(emprestimos.status, status) : sql`1=1`,
+			),
+		);
+
+	return emprestimosDoFuncionario;
+}
+
+export async function getFuncionarioMargem(funcionarioId: string) {
+	const funcionario = await findFuncionarioById(funcionarioId);
+
+	const autorizacaoAtiva =
+		await findAutorizacaoAtivaByFuncionarioId(funcionarioId);
+
+	if (!autorizacaoAtiva) {
+		throw new AutorizacaoConsultaRequiredError();
+	}
+
+	const empresaHabilitada = await checkEmpresaHabilitada(funcionario.cnpj);
+	if (!empresaHabilitada) {
+		throw new EmpresaNotEnabledError();
+	}
+
+	const emprestimosAprovados = await findEmprestimosByFuncionarioId(
+		funcionarioId,
+		"aprovado",
+	);
+
+	const margem = calculateMargem(
+		funcionario.salario,
+		emprestimosAprovados.map((emprestimo) => emprestimo.valorParcela),
+	);
+
+	return {
+		funcionarioId: funcionario.id,
+		salario: funcionario.salario,
+		...margem,
+	};
 }

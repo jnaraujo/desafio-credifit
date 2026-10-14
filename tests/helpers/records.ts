@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { expect } from "vitest";
+import type { CreateEmpresaBody } from "@/schemas/empresas";
 import type { CreateFuncionarioBody } from "@/schemas/funcionarios";
-import { empresaValida } from "../fixtures/cadastros";
+import { createFuncionarioValido, empresaValida } from "../fixtures/cadastros";
 
 export async function createEmpresaForTest(
 	app: FastifyInstance,
@@ -39,4 +40,28 @@ export async function createFuncionarioForTest(
 		);
 	}
 	return id;
+}
+
+export async function createFuncionarioAutorizadoForTest(
+	app: FastifyInstance,
+	{
+		empresa = empresaValida,
+		funcionarioOverrides = {},
+	}: {
+		empresa?: CreateEmpresaBody;
+		funcionarioOverrides?: Partial<CreateFuncionarioBody>;
+	} = {},
+) {
+	const empresaId = await createEmpresaForTest(app, empresa);
+	const funcionarioId = await createFuncionarioForTest(
+		app,
+		createFuncionarioValido(empresaId, funcionarioOverrides),
+	);
+	const response = await app.inject({
+		method: "POST",
+		url: `/funcionarios/${funcionarioId}/autorizacao-consulta`,
+	});
+
+	expect(response.statusCode).toBe(200);
+	return funcionarioId;
 }

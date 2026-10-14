@@ -12,6 +12,11 @@ import {
 import { CadastroDuplicateError } from "@/errors/cadastro-duplicate-error";
 import { EmpresaNotFoundError } from "@/errors/empresa-not-found-error";
 import { FuncionarioNotFoundError } from "@/errors/funcionario-not-found-error";
+import {
+	AutorizacaoConsultaRequiredError,
+	DataprevUnavailableError,
+	EmpresaNotEnabledError,
+} from "@/errors/margem-errors";
 import { registerRoutesV1 } from "@/http/routes/route";
 
 declare module "fastify" {
@@ -52,6 +57,27 @@ export async function createApp() {
 
 		if (error instanceof FuncionarioNotFoundError) {
 			return reply.status(404).send({
+				message: error.message,
+				details: {},
+			});
+		}
+
+		if (error instanceof AutorizacaoConsultaRequiredError) {
+			return reply.status(403).send({
+				message: error.message,
+				details: {},
+			});
+		}
+
+		if (error instanceof EmpresaNotEnabledError) {
+			return reply.status(422).send({
+				message: error.message,
+				details: {},
+			});
+		}
+
+		if (error instanceof DataprevUnavailableError) {
+			return reply.status(502).send({
 				message: error.message,
 				details: {},
 			});

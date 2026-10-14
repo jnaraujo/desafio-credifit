@@ -1,3 +1,4 @@
+import Decimal from "decimal.js";
 import type { FastifyInstance } from "fastify";
 import { ZodTypeProvider } from "fastify-type-provider-zod";
 import {
@@ -5,10 +6,13 @@ import {
 	authorizeConsultaDataprevParamsSchema,
 	createFuncionario201ResponseSchema,
 	createFuncionarioBodySchema,
+	getFuncionarioMargem200ResponseSchema,
+	getFuncionarioMargemParamsSchema,
 } from "@/schemas/funcionarios";
 import {
 	authorizeConsultaDataprev,
 	createFuncionario,
+	getFuncionarioMargem,
 } from "@/services/funcionarios";
 
 /** Rotas de funcionários, autorização e consulta de margem. */
@@ -30,7 +34,7 @@ export function funcionariosRoutes(app: FastifyInstance) {
 				nomeCompleto: funcionario.nome,
 				cpf: funcionario.cpf,
 				email: funcionario.email,
-				salario: funcionario.salario,
+				salario: new Decimal(funcionario.salario).toNumber(),
 				empresaId: funcionario.empresaId,
 				createdAt: funcionario.createdAt.toISOString(),
 			});
@@ -56,6 +60,28 @@ export function funcionariosRoutes(app: FastifyInstance) {
 				funcionarioId: autorizacao.funcionarioId,
 				autorizado: true,
 				expiraEm: autorizacao.expiraEm.toISOString(),
+			});
+		},
+	);
+
+	app.withTypeProvider<ZodTypeProvider>().get(
+		"/:funcionarioId/margem",
+		{
+			schema: {
+				params: getFuncionarioMargemParamsSchema,
+				response: {
+					200: getFuncionarioMargem200ResponseSchema,
+				},
+			},
+		},
+		async (req, reply) => {
+			const margem = await getFuncionarioMargem(req.params.funcionarioId);
+			return reply.status(200).send({
+				funcionarioId: margem.funcionarioId,
+				salario: new Decimal(margem.salario).toNumber(),
+				margemTotal: margem.margemTotal.toNumber(),
+				margemUtilizada: margem.margemUtilizada.toNumber(),
+				margemDisponivel: margem.margemDisponivel.toNumber(),
 			});
 		},
 	);

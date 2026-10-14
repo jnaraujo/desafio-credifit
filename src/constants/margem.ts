@@ -1,0 +1,1 @@
+export const MARGEM_CONSIGNAVEL_PERCENTUAL = 35;

@@ -9,7 +9,7 @@ export const funcionarios = pgTable("funcionarios", {
 		.unique()
 		.notNull()
 		.references(() => pessoas.id),
-	salario: numeric("salario", { mode: "number" }).notNull(),
+	salario: numeric("salario").notNull(),
 
 	contaId: uuid("conta_id")
 		.notNull()

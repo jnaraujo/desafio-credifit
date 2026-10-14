@@ -45,3 +45,19 @@ export const authorizeConsultaDataprev200ResponseSchema = z.object({
 	autorizado: z.boolean(),
 	expiraEm: z.string().datetime({ message: "Data de expiração inválida" }),
 });
+
+export const getFuncionarioMargemParamsSchema = z.object({
+	funcionarioId: z
+		.string()
+		.uuid({ message: "ID do funcionário precisa ser um UUID válido" }),
+});
+
+export const getFuncionarioMargem200ResponseSchema = z.object({
+	funcionarioId: z
+		.string()
+		.uuid({ message: "ID do funcionário precisa ser um UUID válido" }),
+	salario: z.number(),
+	margemTotal: z.number(),
+	margemUtilizada: z.number(),
+	margemDisponivel: z.number(),
+});

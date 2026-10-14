@@ -22,6 +22,13 @@
       "when": 1792000180713,
       "tag": "0002_add-autorizacoes-consulta",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792006036377,
+      "tag": "0003_add-emprestimos-for-margem",
+      "breakpoints": true
     }
   ]
 }

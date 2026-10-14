@@ -1,0 +1,1 @@
+export const DATAPREV_TIMEOUT_MS = 2500;

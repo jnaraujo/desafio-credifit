@@ -40,7 +40,7 @@ describe("POST /emprestimos/simular", () => {
 		await app.close();
 	});
 
-	it("retorna apenas as opções de parcelas que cabem na margem", async () => {
+	it("aceita valor igual à margem e calcula as parcelas", async () => {
 		const funcionarioId = await createFuncionarioAutorizadoForTest(app, {
 			funcionarioOverrides: { salario: 1000 },
 		});
@@ -51,17 +51,19 @@ describe("POST /emprestimos/simular", () => {
 		const response = await app.inject({
 			method: "POST",
 			url: "/emprestimos/simular",
-			payload: { funcionarioId, valorSolicitado: 1000 },
+			payload: { funcionarioId, valorSolicitado: 350 },
 		});
 
 		expect(response.statusCode).toBe(200);
 		expect(response.json()).toEqual({
 			funcionarioId,
-			valorSolicitado: 1000,
+			valorSolicitado: 350,
 			margemDisponivel: 350,
 			parcelas: [
-				{ numeroParcelas: 3, valorParcela: 333.33 },
-				{ numeroParcelas: 4, valorParcela: 250 },
+				{ numeroParcelas: 1, valorParcela: 350 },
+				{ numeroParcelas: 2, valorParcela: 175 },
+				{ numeroParcelas: 3, valorParcela: 116.67 },
+				{ numeroParcelas: 4, valorParcela: 87.5 },
 			],
 		});
 	});
@@ -90,15 +92,20 @@ describe("POST /emprestimos/simular", () => {
 		const response = await app.inject({
 			method: "POST",
 			url: "/emprestimos/simular",
-			payload: { funcionarioId, valorSolicitado: 1000 },
+			payload: { funcionarioId, valorSolicitado: 200 },
 		});
 
 		expect(response.statusCode).toBe(200);
 		expect(response.json()).toEqual({
 			funcionarioId,
-			valorSolicitado: 1000,
+			valorSolicitado: 200,
 			margemDisponivel: 250,
-			parcelas: [{ numeroParcelas: 4, valorParcela: 250 }],
+			parcelas: [
+				{ numeroParcelas: 1, valorParcela: 200 },
+				{ numeroParcelas: 2, valorParcela: 100 },
+				{ numeroParcelas: 3, valorParcela: 66.67 },
+				{ numeroParcelas: 4, valorParcela: 50 },
+			],
 		});
 	});
 
@@ -119,19 +126,19 @@ describe("POST /emprestimos/simular", () => {
 		});
 	});
 
-	it("retorna 400 quando nenhuma opção cabe na margem", async () => {
+	it("retorna 400 quando o valor total solicitado excede a margem", async () => {
 		const funcionarioId = await createFuncionarioAutorizadoForTest(app, {
 			funcionarioOverrides: { salario: 1000 },
 		});
 		const response = await app.inject({
 			method: "POST",
 			url: "/emprestimos/simular",
-			payload: { funcionarioId, valorSolicitado: 2000 },
+			payload: { funcionarioId, valorSolicitado: 1000 },
 		});
 
 		expect(response.statusCode).toBe(400);
 		expect(response.json()).toMatchObject({
-			message: "Nenhuma opção de parcelamento cabe na margem disponível",
+			message: "Valor solicitado excede a margem disponível",
 			details: {},
 		});
 	});

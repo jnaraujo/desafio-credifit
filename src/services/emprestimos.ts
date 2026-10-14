@@ -34,15 +34,11 @@ export async function simulateEmprestimo(simulation: SimulateEmprestimoBody) {
 	);
 
 	const valorSolicitado = new Decimal(simulation.valorSolicitado);
-
-	const parcelas = calculateOpcoesParcelas(
-		valorSolicitado,
-		margem.margemDisponivel,
-	);
-
-	if (parcelas.length === 0) {
+	if (valorSolicitado.greaterThan(margem.margemDisponivel)) {
 		throw new MargemInsuficienteError();
 	}
+
+	const parcelas = calculateOpcoesParcelas(valorSolicitado);
 
 	return {
 		funcionarioId: funcionario.id,

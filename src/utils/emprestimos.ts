@@ -8,7 +8,6 @@ export type OpcaoParcelamento = {
 
 export function calculateOpcoesParcelas(
 	valorSolicitado: Decimal,
-	margemDisponivel: Decimal,
 ): OpcaoParcelamento[] {
 	const options: OpcaoParcelamento[] = [];
 
@@ -21,10 +20,7 @@ export function calculateOpcoesParcelas(
 			.dividedBy(numParcelas)
 			.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 
-		if (
-			valorParcela.greaterThan(0) &&
-			valorParcela.lessThanOrEqualTo(margemDisponivel)
-		) {
+		if (valorParcela.greaterThan(0)) {
 			options.push({ numeroParcelas: numParcelas, valorParcela });
 		}
 	}

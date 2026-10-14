@@ -4,10 +4,13 @@ import type { FastifyError } from "fastify";
 import fastify from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import {
+	hasZodFastifySchemaValidationErrors,
 	jsonSchemaTransform,
 	serializerCompiler,
 	validatorCompiler,
 } from "fastify-type-provider-zod";
+import { CadastroDuplicadoError } from "@/errors/cadastro-duplicado-error";
+import { EmpresaNaoEncontradaError } from "@/errors/empresa-nao-encontrada-error";
 import { registerRoutesV1 } from "@/http/routes/route";
 
 declare module "fastify" {
@@ -20,6 +23,32 @@ export async function createApp() {
 	const app = fastify().withTypeProvider<ZodTypeProvider>();
 
 	app.setErrorHandler((error: FastifyError, _, reply) => {
+		if (hasZodFastifySchemaValidationErrors(error)) {
+			return reply.status(400).send({
+				message: "Dados inválidos",
+				details: {
+					fields: error.validation.map((issue) => ({
+						field: issue.params.issue.path.join("."),
+						message: issue.message,
+					})),
+				},
+			});
+		}
+
+		if (error instanceof CadastroDuplicadoError) {
+			return reply.status(409).send({
+				message: error.message,
+				details: {},
+			});
+		}
+
+		if (error instanceof EmpresaNaoEncontradaError) {
+			return reply.status(404).send({
+				message: error.message,
+				details: {},
+			});
+		}
+
 		const statusCode = error.statusCode || 500;
 		const safeMessage =
 			statusCode >= 500

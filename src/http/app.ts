@@ -11,6 +11,7 @@ import {
 } from "fastify-type-provider-zod";
 import { CadastroDuplicateError } from "@/errors/cadastro-duplicate-error";
 import { EmpresaNotFoundError } from "@/errors/empresa-not-found-error";
+import { EmprestimoNotFoundError } from "@/errors/emprestimo-not-found-error";
 import { FuncionarioNotFoundError } from "@/errors/funcionario-not-found-error";
 import {
 	AutorizacaoConsultaRequiredError,
@@ -57,6 +58,13 @@ export async function createApp() {
 		}
 
 		if (error instanceof FuncionarioNotFoundError) {
+			return reply.status(404).send({
+				message: error.message,
+				details: {},
+			});
+		}
+
+		if (error instanceof EmprestimoNotFoundError) {
 			return reply.status(404).send({
 				message: error.message,
 				details: {},
@@ -119,7 +127,7 @@ export async function createApp() {
 				},
 				servers: [
 					{
-						url: "http://localhost:3001",
+						url: "http://localhost:3000",
 						description: "Development server",
 					},
 				],

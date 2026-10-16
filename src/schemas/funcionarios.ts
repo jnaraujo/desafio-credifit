@@ -13,6 +13,7 @@ export const createFuncionarioBodySchema = z.object({
 		.uuid({ message: "ID da empresa precisa ser um UUID válido" }),
 	salario: z
 		.number()
+		.finite()
 		.min(0.01, { message: "Salário precisa ser no mínimo 0,01" }),
 });
 
@@ -25,6 +26,7 @@ export const createFuncionario201ResponseSchema = z.object({
 	email: z.string().email({ message: "Email inválido" }),
 	salario: z
 		.number()
+		.finite()
 		.min(0.01, { message: "Salário precisa ser no mínimo 0,01" }),
 	empresaId: z
 		.string()
@@ -56,8 +58,8 @@ export const getFuncionarioMargem200ResponseSchema = z.object({
 	funcionarioId: z
 		.string()
 		.uuid({ message: "ID do funcionário precisa ser um UUID válido" }),
-	salario: z.number(),
-	margemTotal: z.number(),
-	margemUtilizada: z.number(),
-	margemDisponivel: z.number(),
+	salario: z.number().finite(),
+	margemTotal: z.number().finite(),
+	margemUtilizada: z.number().finite(),
+	margemDisponivel: z.number().finite(),
 });

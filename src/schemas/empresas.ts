@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { cpfSchema } from "./pessoas";
 
-export const cnpjSchema = z
-	.string()
-	.length(14, { message: "CNPJ precisa ter 14 caracteres" });
+export const cnpjSchema = z.string().regex(/^\d{14}$/, {
+	message: "CNPJ precisa ter 14 dígitos numéricos",
+});
 
 export const createEmpresaBodySchema = z.object({
 	cnpj: cnpjSchema,

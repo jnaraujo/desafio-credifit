@@ -53,6 +53,40 @@ describe("POST /empresas", () => {
 		});
 	});
 
+	it("retorna 400 quando o CNPJ contém caracteres não numéricos", async () => {
+		const response = await app.inject({
+			method: "POST",
+			url: "/empresas",
+			payload: { ...empresaValida, cnpj: "ABCDEFGHIJKLMN" },
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.json()).toMatchObject({ message: "Dados inválidos" });
+	});
+
+	it("faz rollback do cadastro quando o CNPJ duplicado conflita", async () => {
+		await createEmpresaForTest(app);
+		const payload = {
+			...empresaValida,
+			cpfRepresentante: "11122233345",
+			email: "rollback-cnpj@example.com",
+		};
+
+		const duplicada = await app.inject({
+			method: "POST",
+			url: "/empresas",
+			payload,
+		});
+		expect(duplicada.statusCode).toBe(409);
+
+		const retry = await app.inject({
+			method: "POST",
+			url: "/empresas",
+			payload: { ...payload, cnpj: "98765432000100" },
+		});
+		expect(retry.statusCode).toBe(201);
+	});
+
 	it("retorna 400 quando o CPF do representante contém letras", async () => {
 		const response = await app.inject({
 			method: "POST",
@@ -163,13 +197,7 @@ describe("POST /empresas", () => {
 	});
 
 	it("retorna 409 quando o CPF do representante pertence a um funcionário de outra empresa", async () => {
-		const empresaResponse = await app.inject({
-			method: "POST",
-			url: "/empresas",
-			payload: empresaValida,
-		});
-		expect(empresaResponse.statusCode).toBe(201);
-		const empresaId = empresaResponse.json().id as string;
+		const empresaId = await createEmpresaForTest(app);
 
 		const funcionario = createFuncionarioValido(empresaId);
 		await createFuncionarioForTest(app, funcionario);

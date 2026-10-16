@@ -166,6 +166,23 @@ describe("POST /funcionarios", () => {
 		},
 	);
 
+	it("retorna 400 quando o salário excede o limite de número finito", async () => {
+		const payload = createFuncionarioValido(empresaIdInexistente);
+		const body = JSON.stringify(payload).replace(
+			/"salario":\d+(?:\.\d+)?/,
+			'"salario":1e309',
+		);
+		const response = await app.inject({
+			method: "POST",
+			url: "/funcionarios",
+			headers: { "content-type": "application/json" },
+			payload: body,
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.json()).toMatchObject({ message: "Dados inválidos" });
+	});
+
 	it("aceita salário de 0,01", async () => {
 		const empresaId = await createEmpresaForTest(app);
 		const response = await app.inject({
@@ -213,25 +230,35 @@ describe("POST /funcionarios", () => {
 		});
 	});
 
-	it("retorna 409 quando o e-mail já pertence a outro funcionário", async () => {
+	it("faz rollback da pessoa quando o e-mail do cadastro conflita", async () => {
 		const empresaId = await createEmpresaForTest(app);
 		const primeiroFuncionario = createFuncionarioValido(empresaId);
 		await createFuncionarioForTest(app, primeiroFuncionario);
+		const cpfTentativa = "98765432101";
 
-		const response = await app.inject({
+		const duplicado = await app.inject({
 			method: "POST",
 			url: "/funcionarios",
 			payload: createFuncionarioValido(empresaId, {
-				cpf: "98765432101",
+				cpf: cpfTentativa,
 				email: primeiroFuncionario.email,
 			}),
 		});
-
-		expect(response.statusCode).toBe(409);
-		expect(response.json()).toMatchObject({
+		expect(duplicado.statusCode).toBe(409);
+		expect(duplicado.json()).toMatchObject({
 			message: "Email já cadastrado",
 			details: {},
 		});
+
+		const retry = await app.inject({
+			method: "POST",
+			url: "/funcionarios",
+			payload: createFuncionarioValido(empresaId, {
+				cpf: cpfTentativa,
+				email: "retry-after-conflict@example.com",
+			}),
+		});
+		expect(retry.statusCode).toBe(201);
 	});
 
 	it("retorna 409 quando o CPF já pertence ao representante da empresa", async () => {
@@ -251,15 +278,17 @@ describe("POST /funcionarios", () => {
 		});
 	});
 
-	it("retorna 409 quando o e-mail já pertence à conta da empresa", async () => {
+	it("faz rollback e retorna 409 pelo e-mail de outra empresa", async () => {
 		const empresaId = await createEmpresaForTest(app);
+		const funcionario = createFuncionarioValido(empresaId, {
+			cpf: "98765432102",
+			email: empresaValida.email,
+		});
+
 		const response = await app.inject({
 			method: "POST",
 			url: "/funcionarios",
-			payload: createFuncionarioValido(empresaId, {
-				cpf: "98765432101",
-				email: empresaValida.email,
-			}),
+			payload: funcionario,
 		});
 
 		expect(response.statusCode).toBe(409);
@@ -267,5 +296,12 @@ describe("POST /funcionarios", () => {
 			message: "Email já cadastrado",
 			details: {},
 		});
+
+		const retry = await app.inject({
+			method: "POST",
+			url: "/funcionarios",
+			payload: { ...funcionario, email: "novo-email@example.com" },
+		});
+		expect(retry.statusCode).toBe(201);
 	});
 });

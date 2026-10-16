@@ -7,14 +7,15 @@ import {
 	describe,
 	expect,
 	it,
+	vi,
 } from "vitest";
-import { db } from "@/database/connection";
-import { emprestimos } from "@/database/schema";
+import * as dataprevClient from "@/clients/dataprev";
 import { createApp } from "@/http/app";
 import { createFuncionarioValido } from "../fixtures/cadastros";
 import { setMockScenario } from "../helpers/mocks";
 import {
 	createEmpresaForTest,
+	createEmprestimoForTest,
 	createFuncionarioAutorizadoForTest,
 	createFuncionarioForTest,
 } from "../helpers/records";
@@ -33,6 +34,7 @@ describe("POST /emprestimos/simular", () => {
 	});
 
 	afterEach(async () => {
+		vi.restoreAllMocks();
 		await setMockScenario("healthy");
 	});
 
@@ -44,6 +46,8 @@ describe("POST /emprestimos/simular", () => {
 		const funcionarioId = await createFuncionarioAutorizadoForTest(app, {
 			funcionarioOverrides: { salario: 1000 },
 		});
+		const empresaSpy = vi.spyOn(dataprevClient, "checkEmpresaHabilitada");
+		const scoreSpy = vi.spyOn(dataprevClient, "getFuncionarioScore");
 
 		// Simula o Dataprev indisponível para garantir que a margem seja calculada apenas com base no salário e nos empréstimos aprovados
 		await setMockScenario("dataprev-down");
@@ -66,28 +70,25 @@ describe("POST /emprestimos/simular", () => {
 				{ numeroParcelas: 4, valorParcela: 87.5 },
 			],
 		});
+		expect(empresaSpy).not.toHaveBeenCalled();
+		expect(scoreSpy).not.toHaveBeenCalled();
 	});
 
 	it("considera parcelas aprovadas para calcular a margem disponível", async () => {
 		const funcionarioId = await createFuncionarioAutorizadoForTest(app, {
-			funcionarioOverrides: { salario: 1000 },
+			funcionarioOverrides: { salario: 1000, cpf: "98765432199" },
 		});
-		await db.insert(emprestimos).values([
-			{
-				funcionarioId,
-				valorSolicitado: "400",
-				numeroParcelas: 4,
-				valorParcela: "100",
-				status: "aprovado",
-			},
-			{
-				funcionarioId,
-				valorSolicitado: "800",
-				numeroParcelas: 4,
-				valorParcela: "200",
-				status: "rejeitado",
-			},
-		]);
+		const aprovado = await createEmprestimoForTest(app, funcionarioId, 200, 2);
+		expect(aprovado.status).toBe("aprovado");
+
+		await setMockScenario("gateway-rejected");
+		const rejeitado = await createEmprestimoForTest(app, funcionarioId);
+		expect(rejeitado.status).toBe("rejeitado");
+
+		await setMockScenario("gateway-down");
+		const erro = await createEmprestimoForTest(app, funcionarioId);
+		expect(erro.status).toBe("erro_processamento");
+		await setMockScenario("healthy");
 
 		const response = await app.inject({
 			method: "POST",
@@ -109,7 +110,7 @@ describe("POST /emprestimos/simular", () => {
 		});
 	});
 
-	it("não retorna opções cuja parcela arredondada seja zero", async () => {
+	it("retorna todas as opções mesmo quando a parcela arredonda para zero", async () => {
 		const funcionarioId = await createFuncionarioAutorizadoForTest(app);
 		const response = await app.inject({
 			method: "POST",
@@ -118,12 +119,24 @@ describe("POST /emprestimos/simular", () => {
 		});
 
 		expect(response.statusCode).toBe(200);
-		expect(response.json()).toMatchObject({
-			parcelas: [
-				{ numeroParcelas: 1, valorParcela: 0.01 },
-				{ numeroParcelas: 2, valorParcela: 0.01 },
-			],
+		expect(response.json().parcelas).toEqual([
+			{ numeroParcelas: 1, valorParcela: 0.01 },
+			{ numeroParcelas: 2, valorParcela: 0.01 },
+			{ numeroParcelas: 3, valorParcela: 0 },
+			{ numeroParcelas: 4, valorParcela: 0 },
+		]);
+	});
+
+	it("retorna 400 quando o valor simulado é infinito no JSON", async () => {
+		const response = await app.inject({
+			method: "POST",
+			url: "/emprestimos/simular",
+			headers: { "content-type": "application/json" },
+			payload: `{"funcionarioId":"${randomUUID()}","valorSolicitado":1e309}`,
 		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.json()).toMatchObject({ message: "Dados inválidos" });
 	});
 
 	it("retorna 400 quando o valor total solicitado excede a margem", async () => {

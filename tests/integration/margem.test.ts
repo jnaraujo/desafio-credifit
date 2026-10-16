@@ -8,13 +8,12 @@ import {
 	expect,
 	it,
 } from "vitest";
-import { db } from "@/database/connection";
-import { emprestimos } from "@/database/schema";
 import { createApp } from "@/http/app";
 import { createFuncionarioValido, empresaValida } from "../fixtures/cadastros";
 import { setMockScenario } from "../helpers/mocks";
 import {
 	createEmpresaForTest,
+	createEmprestimoForTest,
 	createFuncionarioAutorizadoForTest,
 	createFuncionarioForTest,
 } from "../helpers/records";
@@ -60,53 +59,59 @@ describe("GET /funcionarios/:funcionarioId/margem", () => {
 	});
 
 	it("soma apenas parcelas aprovadas do funcionário consultado", async () => {
+		const empresaId = await createEmpresaForTest(app);
 		const funcionarioId = await createFuncionarioAutorizadoForTest(app, {
-			funcionarioOverrides: { salario: 5000.25 },
+			empresaId,
+			funcionarioOverrides: {
+				salario: 5000.25,
+				cpf: "98765432199",
+			},
 		});
-		const outraEmpresaId = await createEmpresaForTest(app, {
-			...empresaValida,
-			cnpj: "11223344000199",
-			cpfRepresentante: "11122233344",
-			email: "representante@outra-empresa.com",
-		});
-		const outroFuncionarioId = await createFuncionarioForTest(
-			app,
-			createFuncionarioValido(outraEmpresaId, {
+		const outroFuncionarioId = await createFuncionarioAutorizadoForTest(app, {
+			empresaId,
+			funcionarioOverrides: {
 				cpf: "88888888888",
-				email: "funcionario@outra-empresa.com",
-			}),
-		);
+				email: "outro-funcionario@techsolutions.com",
+			},
+		});
 
-		await db.insert(emprestimos).values([
-			{
-				funcionarioId,
-				valorSolicitado: "1000",
-				numeroParcelas: 4,
-				valorParcela: "250",
-				status: "aprovado",
-			},
-			{
-				funcionarioId,
-				valorSolicitado: "600",
-				numeroParcelas: 3,
-				valorParcela: "200",
-				status: "rejeitado",
-			},
-			{
-				funcionarioId,
-				valorSolicitado: "400",
-				numeroParcelas: 2,
-				valorParcela: "200",
-				status: "erro_processamento",
-			},
-			{
-				funcionarioId: outroFuncionarioId,
-				valorSolicitado: "3600",
-				numeroParcelas: 4,
-				valorParcela: "900",
-				status: "aprovado",
-			},
+		const primeiroAprovado = await createEmprestimoForTest(
+			app,
+			funcionarioId,
+			1000,
+			4,
+		);
+		const segundoAprovado = await createEmprestimoForTest(
+			app,
+			funcionarioId,
+			600,
+			3,
+		);
+		await setMockScenario("gateway-rejected");
+		const rejeitado = await createEmprestimoForTest(app, funcionarioId, 400, 2);
+		await setMockScenario("gateway-down");
+		const erro = await createEmprestimoForTest(app, funcionarioId, 400, 2);
+		await setMockScenario("healthy");
+		const outroFuncionarioAprovado = await createEmprestimoForTest(
+			app,
+			outroFuncionarioId,
+			1000,
+			4,
+		);
+		expect([
+			primeiroAprovado.status,
+			segundoAprovado.status,
+			rejeitado.status,
+			erro.status,
+			outroFuncionarioAprovado.status,
+		]).toEqual([
+			"aprovado",
+			"aprovado",
+			"rejeitado",
+			"erro_processamento",
+			"aprovado",
 		]);
+		await setMockScenario("healthy");
 
 		const response = await app.inject({
 			method: "GET",
@@ -116,8 +121,8 @@ describe("GET /funcionarios/:funcionarioId/margem", () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.json()).toMatchObject({
 			margemTotal: 1750.09,
-			margemUtilizada: 250,
-			margemDisponivel: 1500.09,
+			margemUtilizada: 450,
+			margemDisponivel: 1300.09,
 		});
 	});
 
@@ -159,6 +164,34 @@ describe("GET /funcionarios/:funcionarioId/margem", () => {
 		expect(response.json()).toMatchObject({
 			message: "Autorização de consulta ausente ou expirada",
 			details: {},
+		});
+	});
+
+	it("não usa a autorização ativa de outro funcionário da mesma empresa", async () => {
+		const empresaId = await createEmpresaForTest(app);
+		await createFuncionarioAutorizadoForTest(app, {
+			empresaId,
+			funcionarioOverrides: {
+				cpf: "98765432110",
+				email: "autorizado@techsolutions.com",
+			},
+		});
+		const funcionarioSemAutorizacaoId = await createFuncionarioForTest(
+			app,
+			createFuncionarioValido(empresaId, {
+				cpf: "98765432111",
+				email: "sem-autorizacao@techsolutions.com",
+			}),
+		);
+
+		const response = await app.inject({
+			method: "GET",
+			url: `/funcionarios/${funcionarioSemAutorizacaoId}/margem`,
+		});
+
+		expect(response.statusCode).toBe(403);
+		expect(response.json()).toMatchObject({
+			message: "Autorização de consulta ausente ou expirada",
 		});
 	});
 

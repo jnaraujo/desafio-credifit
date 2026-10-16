@@ -113,11 +113,7 @@ export async function findFuncionarioById(funcionarioId: string) {
 		.innerJoin(pessoas, eq(funcionarios.pessoaId, pessoas.id))
 		.where(eq(funcionarios.id, funcionarioId));
 
-	if (!funcionario) {
-		throw new FuncionarioNotFoundError();
-	}
-
-	return funcionario;
+	return funcionario ?? null;
 }
 
 export async function authorizeConsultaDataprev(funcionarioId: string) {
@@ -184,6 +180,9 @@ export async function findEmprestimosByFuncionarioId(
 
 export async function getFuncionarioMargem(funcionarioId: string) {
 	const funcionario = await findFuncionarioById(funcionarioId);
+	if (!funcionario) {
+		throw new FuncionarioNotFoundError();
+	}
 
 	const autorizacaoAtiva =
 		await findAutorizacaoAtivaByFuncionarioId(funcionarioId);

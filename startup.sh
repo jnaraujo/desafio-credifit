@@ -2,7 +2,7 @@
 set -eu
 
 echo "Running database migrations..."
-pnpm migrate
+pnpm db:migrate
 
 echo "Starting API..."
 exec pnpm start

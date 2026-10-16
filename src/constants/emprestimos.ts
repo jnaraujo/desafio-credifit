@@ -1,1 +1,3 @@
 export const NUMERO_MAXIMO_PARCELAS = 4;
+export const NUMERO_MAXIMO_EMPRESTIMOS_ATIVOS = 3;
+export const GATEWAY_TIMEOUT_MS = 3000;

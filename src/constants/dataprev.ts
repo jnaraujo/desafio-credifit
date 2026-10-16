@@ -1,1 +1,1 @@
-export const DATAPREV_TIMEOUT_MS = 2500;
+export const DATAPREV_TIMEOUT_MS = 3000;

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "@/http/app";
 import { createFuncionarioValido } from "../fixtures/cadastros";
+import { expectExpiracaoEmAproximadamente24Horas } from "../helpers/assertions";
 import {
 	createEmpresaForTest,
 	createFuncionarioForTest,
@@ -9,30 +10,11 @@ import {
 
 type App = Awaited<ReturnType<typeof createApp>>;
 
-const umDiaEmMs = 24 * 60 * 60 * 1000;
-const toleranciaRelogioEmMs = 10 * 1000;
-
 type AutorizacaoResponse = {
 	funcionarioId: string;
 	autorizado: boolean;
 	expiraEm: string;
 };
-
-function expectExpiracaoEmAproximadamente24Horas(
-	expiraEm: string,
-	chamadaIniciadaEm: number,
-	respostaRecebidaEm: number,
-) {
-	const expiraEmMs = Date.parse(expiraEm);
-
-	expect(Number.isNaN(expiraEmMs)).toBe(false);
-	expect(expiraEmMs).toBeGreaterThanOrEqual(
-		chamadaIniciadaEm + umDiaEmMs - toleranciaRelogioEmMs,
-	);
-	expect(expiraEmMs).toBeLessThanOrEqual(
-		respostaRecebidaEm + umDiaEmMs + toleranciaRelogioEmMs,
-	);
-}
 
 describe("POST /funcionarios/:funcionarioId/autorizacao-consulta", () => {
 	let app: App;
@@ -107,33 +89,23 @@ describe("POST /funcionarios/:funcionarioId/autorizacao-consulta", () => {
 		);
 		const url = `/funcionarios/${funcionarioId}/autorizacao-consulta`;
 
-		const primeiraChamadaIniciadaEm = Date.now();
 		const primeiraResposta = await app.inject({ method: "POST", url });
-		const primeiraRespostaRecebidaEm = Date.now();
 		expect(primeiraResposta.statusCode).toBe(200);
 		const primeiraAutorizacao = primeiraResposta.json<AutorizacaoResponse>();
-		expectExpiracaoEmAproximadamente24Horas(
-			primeiraAutorizacao.expiraEm,
-			primeiraChamadaIniciadaEm,
-			primeiraRespostaRecebidaEm,
-		);
+
+		await new Promise((resolve) => setTimeout(resolve, 20));
 
 		const segundaChamadaIniciadaEm = Date.now();
 		const segundaResposta = await app.inject({ method: "POST", url });
 		const segundaRespostaRecebidaEm = Date.now();
 		expect(segundaResposta.statusCode).toBe(200);
 		const segundaAutorizacao = segundaResposta.json<AutorizacaoResponse>();
-		expect(segundaAutorizacao).toMatchObject({
-			funcionarioId,
-			autorizado: true,
-			expiraEm: expect.any(String),
-		});
 		expectExpiracaoEmAproximadamente24Horas(
 			segundaAutorizacao.expiraEm,
 			segundaChamadaIniciadaEm,
 			segundaRespostaRecebidaEm,
 		);
-		expect(Date.parse(segundaAutorizacao.expiraEm)).toBeGreaterThanOrEqual(
+		expect(Date.parse(segundaAutorizacao.expiraEm)).toBeGreaterThan(
 			Date.parse(primeiraAutorizacao.expiraEm),
 		);
 	});

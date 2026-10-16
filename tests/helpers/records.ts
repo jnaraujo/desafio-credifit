@@ -46,13 +46,16 @@ export async function createFuncionarioAutorizadoForTest(
 	app: FastifyInstance,
 	{
 		empresa = empresaValida,
+		empresaId: empresaIdExistente,
 		funcionarioOverrides = {},
 	}: {
 		empresa?: CreateEmpresaBody;
+		empresaId?: string;
 		funcionarioOverrides?: Partial<CreateFuncionarioBody>;
 	} = {},
 ) {
-	const empresaId = await createEmpresaForTest(app, empresa);
+	const empresaId =
+		empresaIdExistente ?? (await createEmpresaForTest(app, empresa));
 	const funcionarioId = await createFuncionarioForTest(
 		app,
 		createFuncionarioValido(empresaId, funcionarioOverrides),
@@ -64,4 +67,19 @@ export async function createFuncionarioAutorizadoForTest(
 
 	expect(response.statusCode).toBe(200);
 	return funcionarioId;
+}
+
+export async function createEmprestimoForTest(
+	app: FastifyInstance,
+	funcionarioId: string,
+	valorSolicitado = 100,
+	numeroParcelas = 1,
+) {
+	const response = await app.inject({
+		method: "POST",
+		url: "/emprestimos",
+		payload: { funcionarioId, valorSolicitado, numeroParcelas },
+	});
+	expect(response.statusCode).toBe(201);
+	return response.json();
 }

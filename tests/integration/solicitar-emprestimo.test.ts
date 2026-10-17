@@ -177,6 +177,38 @@ describe("POST /emprestimos", () => {
 		expect(response.json()).toMatchObject({ message: "Dados inválidos" });
 	});
 
+	it.each([0, 1.5, 5])(
+		"retorna 400 quando o número de parcelas é inválido (%s)",
+		async (numeroParcelas) => {
+			const response = await app.inject({
+				method: "POST",
+				url: "/emprestimos",
+				payload: {
+					funcionarioId: randomUUID(),
+					valorSolicitado: 100,
+					numeroParcelas,
+				},
+			});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.json()).toMatchObject({ message: "Dados inválidos" });
+		},
+	);
+
+	it("retorna 400 quando o número de parcelas não foi informado", async () => {
+		const response = await app.inject({
+			method: "POST",
+			url: "/emprestimos",
+			payload: {
+				funcionarioId: randomUUID(),
+				valorSolicitado: 100,
+			},
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.json()).toMatchObject({ message: "Dados inválidos" });
+	});
+
 	it("retorna rejeição por score sem chamar o gateway", async () => {
 		const funcionarioId = await createFuncionarioAutorizadoForTest(app, {
 			funcionarioOverrides: { salario: 5000, cpf: "98765432100" },
@@ -496,6 +528,13 @@ describe("POST /emprestimos", () => {
 		});
 		expect(scoreSpy).toHaveBeenCalledOnce();
 		expect(pagamentoSpy).not.toHaveBeenCalled();
+
+		const loans = await app.inject({
+			method: "GET",
+			url: `/emprestimos?funcionarioId=${funcionarioId}`,
+		});
+		expect(loans.statusCode).toBe(200);
+		expect(loans.json()).toEqual({ data: [] });
 	});
 
 	it.each([
@@ -525,6 +564,13 @@ describe("POST /emprestimos", () => {
 				message: "Dataprev indisponível",
 			});
 			expect(pagamentoSpy).not.toHaveBeenCalled();
+
+			const loans = await app.inject({
+				method: "GET",
+				url: `/emprestimos?funcionarioId=${funcionarioId}`,
+			});
+			expect(loans.statusCode).toBe(200);
+			expect(loans.json()).toEqual({ data: [] });
 		},
 	);
 

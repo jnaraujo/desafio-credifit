@@ -36,8 +36,6 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
-    "@fastify/swagger": "9.8.1",
-    "@fastify/swagger-ui": "6.1.1",
     "@node-rs/argon2": "^2.2.2",
     "axios": "1.19.0",
     "decimal.js": "^10.6.0",

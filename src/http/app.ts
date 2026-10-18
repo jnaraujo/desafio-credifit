@@ -1,11 +1,8 @@
-import fastifySwagger from "@fastify/swagger";
-import fastifySwaggerUi from "@fastify/swagger-ui";
 import type { FastifyError } from "fastify";
 import fastify from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import {
 	hasZodFastifySchemaValidationErrors,
-	jsonSchemaTransform,
 	serializerCompiler,
 	validatorCompiler,
 } from "fastify-type-provider-zod";
@@ -20,12 +17,6 @@ import {
 	MargemInsuficienteError,
 } from "@/errors/margem-errors";
 import { registerRoutesV1 } from "@/http/routes/route";
-
-declare module "fastify" {
-	interface FastifyRequest {
-		startTime: bigint;
-	}
-}
 
 export async function createApp() {
 	const app = fastify().withTypeProvider<ZodTypeProvider>();
@@ -114,31 +105,6 @@ export async function createApp() {
 
 	app.setValidatorCompiler(validatorCompiler);
 	app.setSerializerCompiler(serializerCompiler);
-
-	const isProductionEnvironment = process.env.NODE_ENV === "production";
-
-	if (!isProductionEnvironment) {
-		app.register(fastifySwagger, {
-			openapi: {
-				info: {
-					title: "Desafio Credifit API",
-					description: "Docuentação da API do Desafio Credifit",
-					version: "1.0.0",
-				},
-				servers: [
-					{
-						url: "http://localhost:3000",
-						description: "Development server",
-					},
-				],
-			},
-			transform: jsonSchemaTransform,
-		});
-
-		app.register(fastifySwaggerUi, {
-			routePrefix: "/swagger",
-		});
-	}
 
 	await app.register(registerRoutesV1);
 
